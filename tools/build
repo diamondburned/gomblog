@@ -13,7 +13,11 @@ COMPONENTS_DIR=${COMPONENTS_DIR:-$ROOT/templates/components}
 INDEX_TEMPLATE=${INDEX_TEMPLATE:-$ROOT/templates/index.html}
 ARTICLE_TEMPLATE=${ARTICLE_TEMPLATE:-$ROOT/templates/article.html}
 
+GOMPLATE_FLAGS=${GOMPLATE_FLAGS:-}
+CMARK_FLAGS=${CMARK_FLAGS:-}
+
 gomplateFlags=(
+	${GOMPLATE_FLAGS}
 	--template "components=$COMPONENTS_DIR"
 	--plugin "md=cmark"
 	--plugin "title=$SOURCE_ROOT/tools/title"
@@ -38,7 +42,7 @@ generateArticle() {
 	local body
 	case "$extension" in
 	md)
-		body=$(cmark --smart "$filepath");;
+		body=$(cmark ${CMARK_FLAGS} --nobreaks --unsafe --smart "$filepath");;
 	htm|html)
 		body=$(< "$filepath");;
 	*)
