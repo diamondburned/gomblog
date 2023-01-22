@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+trimPunct() {
+	declare -n v="$1"
+	for punct in "${@:2}"; do
+		if [[ "${v%%"${punct}"*}" != "${v}" ]]; then
+			v="${v%%"${punct}"*}${punct}"
+		fi
+	done
+}
+
+text=$(cmark --nobreaks "$1" | htmlq -t 'body > *:first-child')
+trimPunct text "." "!" "?"
+echo "$text"

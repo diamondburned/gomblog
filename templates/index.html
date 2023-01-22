@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+{{ template "components/head.html" }}
+{{ $articles := datasource "articles" }}
+
+<title>gomblog</title>
+
+{{ template "components/header.html" }}
+
+<main id="index">
+	{{ range $articles }}
+	<article>
+		<aside>
+			<datetime>{{ (time.Unix .writtenAt).Format "2006/01/02" }}</datetime>
+		</aside>
+		<div class="article-body">
+			{{ .synopsis }}
+		</div>
+		<a href="/{{ .slug }}" class="view-more">
+			read more
+		</a>
+	</article>
+	{{ end }}
+</main>
+
+{{ template "components/footer.html" }}

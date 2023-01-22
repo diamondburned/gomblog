@@ -1,0 +1,19 @@
+#!/bin/sh
+MIME_TYPES_PATH=${MIME_TYPES_PATH:-/etc/mime.types}
+
+name="./static/assets/clipboard-$(date +%s)"
+wl-paste > "$name"
+
+mime=$(wl-paste -l | head -n1)
+ext=$(grep -G "^${mime}"$'\t' "$MIME_TYPES_PATH")
+ext=${ext##*$'\t'}
+ext=${ext%% *}
+if [[ "$ext" != "" ]]; then
+	mv "$name" "$name.$ext"
+	name+=".$ext"
+fi
+
+echo "$name"
+echo "Size: $(du -h --apparent-size "$name" | cut -f1)"
+echo "Markdown: ![]($name)"
+echo "HTML: <img src=\"$name\" />"

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{{ template "components/head.html" }}
+{{ $article := datasource "article" }}
+
+<title>{{ $article.synopsis }} — gomblog</title>
+
+{{ template "components/header.html" }}
+
+<main id="article">
+	<article>
+		<aside>
+			<datetime>{{ (time.Unix $article.writtenAt).Format "2006/01/02" }}</datetime>
+			{{ if not (eq $article.writtenAt $article.updatedAt) }}
+			(updated at <datetime>{{ (time.Unix $article.updatedAt).Format "2006/01/02" }}</datetime>)
+			{{ end }}
+		</aside>
+		<div class="article-body">
+			{{ $article.body }}
+		</div>
+	<article>
+</main>
+
+{{ template "components/footer.html" }}

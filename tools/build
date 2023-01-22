@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+SOURCE_ROOT=$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")
+cd "${SOURCE_ROOT}"
+
+ROOT=${ROOT:-$SOURCE_ROOT}
+PUBLIC_DIR=${PUBLIC_DIR:-$ROOT/public}
+STATIC_DIR=${STATIC_DIR:-$ROOT/static}
+ARTICLES_DIR=${ARTICLES_DIR:-$ROOT/articles}
+COMPONENTS_DIR=${COMPONENTS_DIR:-$ROOT/templates/components}
+
+INDEX_TEMPLATE=${INDEX_TEMPLATE:-$ROOT/templates/index.html}
+ARTICLE_TEMPLATE=${ARTICLE_TEMPLATE:-$ROOT/templates/article.html}
+
+gomplateFlags=(
+	--template "components=$COMPONENTS_DIR"
+	--plugin "md=cmark"
+	--plugin "title=$SOURCE_ROOT/tools/title"
+	--plugin "synopsis=$SOURCE_ROOT/tools/synopsis"
+)
+
+generateArticle() {
+	usage $# generateArticle input
+
+	local filepath="${1}"
+	local filename="${1##*/}"
+	local extension="${filename##*.}"
+	local slug="${filename%.*}"
+
+	local writtenAt updatedAt
+	read -r writtenAt updatedAt < <(stat -c '%W %Y' "$filepath")
+	if [[ "$filename" =~ ^[0-9]*\+ ]]; then
+		writtenAt="${filename%%+*}"
+		slug="${slug#*+}"
+	fi
+
+	local body
+	case "$extension" in
+	md)
+		body=$(cmark --smart "$filepath");;
+	htm|html)
+		body=$(< "$filepath");;
+	*)
+		log "Unknown file extension: $extension"
+		return 1;;
+	esac
+
+	local title=$(./tools/title "$filepath")
+	local synopsis=$(./tools/synopsis "$filepath")
+
+	jq --null-input \
+		--arg slug "$slug" \
+		--arg title "$title" \
+		--arg synopsis "$synopsis" \
+		--argjson writtenAt "$writtenAt" \
+		--argjson updatedAt "$updatedAt" \
+		--arg body "$body" \
+		'{ $slug, $title, $synopsis, $writtenAt, $updatedAt, $body }' > "$PUBLIC_DIR/$slug.json"
+
+	gomplate "${gomplateFlags[@]}" \
+		-f "$ARTICLE_TEMPLATE" \
+		-o "$PUBLIC_DIR/$slug/index.html" \
+		-d "article=file://$(realpath "$PUBLIC_DIR/$slug.json")"
+}
+
+generateIndex() {
+	for f in "$@"; do
+		if [[ "$f" != *".json" ]]; then
+			log "generateIndex: expected json file for $f"
+			return 1
+		fi
+	done
+
+	cat "$@" \
+		| jq -sc 'sort_by(.writtenAt) | reverse' \
+		| gomplate "${gomplateFlags[@]}" \
+			-f "$INDEX_TEMPLATE" \
+			-o "$PUBLIC_DIR/index.html" \
+			-d "articles=stdin:///articles.json"
+}
+
+main() {
+	case "$1" in
+	article)
+		for f in "${@:2}"; do
+			generateArticle "$f"
+		done
+		;;
+	index)
+		generateIndex "$@"
+		;;
+	"")
+		rm -rf "$PUBLIC_DIR"
+		mkdir -p "$PUBLIC_DIR"
+
+		parallel -j10 "${BASH_SOURCE[0]}" article -- "$ARTICLES_DIR"/*
+		generateIndex "$PUBLIC_DIR"/*.json
+
+		ln -s "$(realpath "$STATIC_DIR")" "$PUBLIC_DIR/static"
+		;;
+	*)
+		log "Unknown item to gennerate: $1 (wants article|index)"
+		return 1;;
+	esac
+}
+
+log() {
+	echo "$@" >&2
+}
+
+# usage <n> <thing> <args...>
+usage() {
+	if (( "$1" < ($# - 3) )); then
+		log "Usage: $2 $(printf "<%s> " "${@:3}")"
+		return 1
+	fi
+}
+
+main "$@"

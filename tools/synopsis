@@ -1,0 +1,2 @@
+#!/bin/sh
+cmark --nobreaks "$1" | htmlq 'body > *:first-child'

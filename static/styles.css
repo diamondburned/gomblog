@@ -1,0 +1,169 @@
+html, body {
+	min-height: 100vh;
+}
+
+body {
+	font-family: "Source Serif Pro", "Noto Serif", serif;
+	line-height: 1.5em;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	max-width: 44em;
+}
+
+main {
+	max-width: 38em;
+	width: 100%;
+}
+
+pre {
+	line-height: 1.25em;
+}
+
+body > main {
+	flex: 1;
+}
+
+main {
+	margin: 0 auto;
+}
+
+article {
+	margin: 2em auto;
+}
+
+header {
+	position: relative;
+}
+
+header::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	max-width: 38em;
+	width: 100%;
+	border-bottom: 1px solid #ccc8;
+}
+
+header h1 {
+	margin: 1em 0;
+}
+
+header h1 small {
+	font-size: 0.65em;
+	font-weight: lighter;
+}
+
+code {
+	background: none;
+	padding: 0;
+}
+
+code, kbd, pre, samp {
+	font-family: "Inconsolata", "Source Code Pro", "Noto Mono", monospace;
+}
+
+p img,
+p video {
+	margin: 0;
+}
+
+a:hover {
+	border: none;
+}
+
+aside {
+	color: #AAA;
+}
+
+li {
+	margin-bottom: 0;
+}
+
+footer {
+	display: grid;
+	gap: 1em;
+	grid-template-columns: 1fr auto;
+	align-items: first baseline;
+	position: relative;
+}
+
+#license {
+	font-size: 0.75em;
+	line-height: 1.5em;
+	text-align: right;
+	max-width: 280px;
+}
+
+@media (max-width: 600px) {
+	footer {
+		display: block;
+	}
+
+	#license {
+		text-align: left;
+	}
+}
+
+footer > * {
+	margin: 2em 0;
+	font-size: 0.9em;
+}
+
+footer::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	max-width: 38em;
+	width: 100%;
+	border-top: 1px solid #ccc8;
+}
+
+#index article > a.view-more {
+	margin: 1rem 0;
+	padding: 1rem 0;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	border-bottom: 2px solid #eb99a1;
+}
+
+#index article > a.view-more:hover {
+	border-color: #DA4453;
+}
+
+#index .article-body h1,
+#index .article-body h2,
+#index .article-body h3,
+#index .article-body h4,
+#index .article-body h5,
+#index .article-body h6 {
+	font-size: 1.25em;
+}
+
+#index .article-body > * {
+	margin: 0;
+	margin-bottom: 1rem;
+}
+
+#article h1,
+#article h2,
+#article h3,
+#article h4,
+#article h5,
+#article h6,
+#article p {
+	margin: 2.5rem 0;
+}
+
+#index .article-body > *:first-child,
+#article .article-body > *:first-child {
+	margin-top: 1rem;
+}
