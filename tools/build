@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
+shopt -s extglob
 
 SOURCE_ROOT=$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")
 cd "${SOURCE_ROOT}"
@@ -53,6 +54,8 @@ generateArticle() {
 	local title=$(./tools/title "$filepath")
 	local synopsis=$(./tools/synopsis "$filepath")
 
+	mkdir -p "$PUBLIC_DIR/$slug"
+
 	jq --null-input \
 		--arg slug "$slug" \
 		--arg title "$title" \
@@ -75,12 +78,12 @@ generateArticle() {
 				text: $bodyText,
 				html: $bodyHTML
 			}
-		}' > "$PUBLIC_DIR/$slug.json"
+		}' > "$PUBLIC_DIR/$slug/index.json"
 
 	gomplate "${gomplateFlags[@]}" \
 		-f "$ARTICLE_TEMPLATE" \
 		-o "$PUBLIC_DIR/$slug/index.html" \
-		-d "article=file://$(realpath "$PUBLIC_DIR/$slug.json")"
+		-d "article=file://$(realpath "$PUBLIC_DIR/$slug/index.json")"
 }
 
 generateIndex() {
@@ -113,8 +116,15 @@ main() {
 		rm -rf "$PUBLIC_DIR"
 		mkdir -p "$PUBLIC_DIR"
 
-		parallel -j10 "${BASH_SOURCE[0]}" article -- "$ARTICLES_DIR"/*
-		generateIndex "$PUBLIC_DIR"/*.json
+		articles=( "$ARTICLES_DIR"/* )
+		if [[ -f "$articles" ]]; then
+			parallel -j10 "${BASH_SOURCE[0]}" article -- "${articles[@]}"
+		fi
+
+		articleJSONs=( "$PUBLIC_DIR"/!(~*)/index.json )
+		if [[ -f "$articleJSONs" ]]; then
+			generateIndex "${articleJSONs[@]}"
+		fi
 
 		ln -s "$(realpath "$STATIC_DIR")" "$PUBLIC_DIR/static"
 		;;
