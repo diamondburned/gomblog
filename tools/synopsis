@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-threshold=150
+threshold=350
 synopsis=
 index=0
 html=$(cmark --nobreaks "$1")
-while (( ${#synopsis} < threshold )); do
+while :; do
 	index=$((index + 1))
-	synopsis+=$(htmlq "body > *:nth-child(${index})" <<< "${html}")
-	synopsis+=$'\n'
+	newSynopsis=$synopsis
+	newSynopsis+=$(htmlq "body > *:nth-child(${index})" <<< "${html}")
+	newSynopsis+=$'\n'
+	if (( ${#synopsis} == 0 || ${#newSynopsis} < threshold )); then
+		synopsis=$newSynopsis
+	else
+		break
+	fi
 done
 echo -n "$synopsis"
