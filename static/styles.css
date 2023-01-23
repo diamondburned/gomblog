@@ -10,7 +10,9 @@
 	--hl: #fff;
 	--ov: rgba(255, 255, 255, 0.15);
 	--hr: rgba(255, 255, 255, 0.60);
+
 	--transition: 75ms linear
+	--page-transition: 200ms ease-in-out;
 }
 
 @media (prefers-color-scheme: light) {
@@ -44,6 +46,22 @@ body {
 	max-width: 44em;
 	padding-top: 0;
 	padding-bottom: 0;
+}
+
+/* Swup Magic */
+main {
+	transition: opacity 100ms linear;
+	opacity: 1;
+}
+
+html.is-animating main {
+	opacity: 0;
+}
+
+@media (prefers-reduced-motion) {
+	main {
+		transition-duration: 0ms;
+	}
 }
 
 main {
@@ -132,7 +150,9 @@ p video {
 
 a {
 	color: var(--blue-text);
-	transition: all var(--transition);
+	transition:
+		color var(--transition),
+		text-decoration var(--transition);
 }
 
 a:visited {
