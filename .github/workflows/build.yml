@@ -10,11 +10,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install Nix packages
-        uses: diamondburned/cache-install@518fc5009d8184c776e16bc5d55eea82dc717ca0
+        uses: diamondburned/cache-install@0746911c01dc84bba95d35be82db09435537d8ca
         with:
           auto-optimise: true
           shell-file: shell.nix
-          nix-path: nixpkgs=channel:nixos-22.11
 
       - name: Build
         run: build
