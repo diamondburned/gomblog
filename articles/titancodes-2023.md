@@ -199,9 +199,9 @@ so that:
 
 - `1` goes to `x = 0%3 = 0`, `y = 0/3 = 0`
 - `2` goes to `x = 1%3 = 1`, `y = 1/3 = 0`
-- `3` goes to `x = 2%3 = 2`, `y = 1/3 = 0`
+- `3` goes to `x = 2%3 = 2`, `y = 2/3 = 0`
 - `4` goes to `x = 3%3 = 0`, `y = 3/3 = 1`
-- `5` goes to `x = 4%3 = 1`, `y = 5/3 = 1`
+- `5` goes to `x = 4%3 = 1`, `y = 4/3 = 1`
 - ...
 
 Here's how `onPress` is implemented:

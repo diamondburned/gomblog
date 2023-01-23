@@ -1,6 +1,12 @@
 # Nix Cheat Sheet
 
-This document describes a few useful Nix functionalities that you’ll want to use often. Note that only use this document to get the gist of things; it is not meant to be a detailed explanation. As usual, heed for the `man` pages for more information. It is also written with the intention that you're using Nix within a non-NixOS distribution.
+This document describes a few useful Nix functionalities that you’ll want to use
+often.
+
+Note that only use this document to get the gist of things; it is not meant to
+be a detailed explanation. As usual, heed for the `man` pages for more
+information. It is also written with the intention that you're using Nix within
+a non-NixOS distribution.
 
 The Nix tool provides several useful functionalities. Below are some of the common ones that you’ll want to know.
 
