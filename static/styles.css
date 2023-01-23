@@ -1,8 +1,8 @@
 :root {
-	--blue: #55CDFC;
-	--pink: #F7A8B8;
-	--blue-text: var(--blue);
-	--pink-text: var(--pink);
+	--blue: #76d9ff;
+	--pink: #ffc0cd;
+	--blue-text: #55CDFC;
+	--pink-text: #f89fb1;
 	--bg: #201b1f;
 	--fg: #eee;
 	--b2: #40363a;
@@ -42,6 +42,8 @@ body {
 	flex-direction: column;
 	box-sizing: border-box;
 	max-width: 44em;
+	padding-top: 0;
+	padding-bottom: 0;
 }
 
 main {
@@ -177,7 +179,7 @@ footer {
 	}
 }
 
-footer > * {
+footer p {
 	margin: 2em 0;
 	font-size: 0.9em;
 }
@@ -212,6 +214,10 @@ footer::before {
 	transition: all var(--transition);
 	color: var(--pink-text);
 	border-bottom: 2px solid var(--pink-text);
+}
+
+#index article > a.view-more:visited {
+	color: var(--pink-text);
 }
 
 #index article > a.view-more:hover {
