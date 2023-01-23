@@ -1,5 +1,38 @@
+:root {
+    --blue: #55CDFC;
+    --pink: #F7A8B8;
+	--blue-text: var(--blue);
+    --pink-text: var(--pink);
+    --bg: #201b1f;
+    --fg: #eee;
+	--b2: #40363a;
+    --f2: #ccc;
+    --hl: #fff;
+    --ov: rgba(255, 255, 255, 0.15);
+    --hr: rgba(255, 255, 255, 0.60);
+	--transition: 75ms linear
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --blue: #00b7ff;
+        --pink: #ff89a0;
+		--blue-text: #1da7dd;
+        --pink-text: #da2a3b;
+        --bg: #eee;
+        --fg: #272226;
+		--b2: #e1e1e1;
+        --f2: #505050;
+        --hl: #000;
+        --ov: rgba(0, 0, 0, 0.15);
+        --hr: rgba(0, 0, 0, 0.60);
+    }
+}
+
 html, body {
 	min-height: 100vh;
+	color: var(--fg);
+	background-color: var(--bg);
 }
 
 body {
@@ -45,14 +78,22 @@ header::after {
 	margin: 0 auto;
 	max-width: 38em;
 	width: 100%;
-	border-bottom: 1px solid #ccc8;
+	border-bottom: 1px solid var(--ov);
 }
 
 header h1 {
+	color: var(--pink-text);
 	margin: 1em 0;
 }
 
+header h1 a,
+header h1 a:hover,
+header h1 a:visited {
+	color: inherit;
+}
+
 header h1 small {
+	color: var(--f2);
 	font-size: 0.65em;
 	font-weight: lighter;
 }
@@ -64,6 +105,14 @@ code {
 
 code, kbd, pre, samp {
 	font-family: "Inconsolata", "Source Code Pro", "Noto Mono", monospace;
+	font-weight: 500;
+	font-size: 0.95em;
+}
+
+pre {
+	background: var(--b2);
+	padding: 1em;
+	overflow-x: auto;
 }
 
 p img,
@@ -71,15 +120,28 @@ p video {
 	margin: 0;
 }
 
+a {
+	color: var(--blue-text);
+	transition: all var(--transition);
+}
+
+a:visited {
+	color: var(--blue-text);
+}
+
 a:hover {
+	color: var(--blue);
 	border: none;
+	text-decoration: underline;
 }
 
 aside {
-	color: #AAA;
+	color: var(--f2);
 }
 
-li {
+ol ol,
+ul ul,
+li li {
 	margin-bottom: 0;
 }
 
@@ -122,27 +184,33 @@ footer::before {
 	margin: 0 auto;
 	max-width: 38em;
 	width: 100%;
-	border-top: 1px solid #ccc8;
+	border-top: 1px solid var(--ov);
 }
 
 #index article > hr {
 	margin: 2em 0;
 	border-style: solid;
+	border-color: var(--pink-text);
 }
 
 #index article > a.view-more {
 	margin: 1rem 0;
+	margin-top: 0;
 	padding: 1rem 0;
-	padding-top: 0;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	border-bottom: 2px solid #eb99a1;
+
+	transition: all var(--transition);
+	color: var(--pink-text);
+	border-bottom: 2px solid var(--pink-text);
 }
 
 #index article > a.view-more:hover {
-	border-color: #DA4453;
+	color: var(--pink);
+	border-color: var(--pink);
+	text-decoration: none;
 }
 
 #index .article-body h1,
@@ -157,6 +225,10 @@ footer::before {
 #index .article-body > * {
 	margin: 0;
 	margin-bottom: 1rem;
+}
+
+#index .article-body > *:last-child {
+	margin-bottom: 0;
 }
 
 #article h1,
