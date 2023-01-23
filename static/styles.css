@@ -109,6 +109,7 @@ code, kbd, pre, samp {
 	font-family: "Inconsolata", "Source Code Pro", "Noto Mono", monospace;
 	font-weight: 500;
 	font-size: 0.95em;
+	tab-size: 4;
 }
 
 pre, blockquote {
