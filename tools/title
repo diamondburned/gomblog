@@ -8,6 +8,14 @@ trimPunct() {
 	done
 }
 
-text=$(cmark --nobreaks "$1" | htmlq -t 'body > *:first-child')
+html=$(cmark --nobreaks "$1")
+
+text=$(htmlq -t "body > h1" <<< "${html}")
+if [[ "$text" != "" ]]; then
+	echo "$text"
+	exit 0
+fi
+
+text=$(htmlq -t 'body > *:first-child' <<< "${html}")
 trimPunct text "." "!" "?"
 echo "$text"
