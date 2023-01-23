@@ -1,0 +1,24 @@
+name: Build
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Nix packages
+        uses: diamondburned/cache-install@518fc5009d8184c776e16bc5d55eea82dc717ca0
+        with:
+          auto-optimise: true
+          shell-file: shell.nix
+
+      - name: Build
+        run: build
+ 
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: public
