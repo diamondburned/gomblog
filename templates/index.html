@@ -18,9 +18,13 @@
 		<div class="article-body">
 			{{ .synopsis.html }}
 		</div>
+		{{ if .synopsis.hasMore }}
 		<a href="/{{ .slug }}" class="view-more">
 			read more
 		</a>
+		{{ else }}
+		<hr>
+		{{ end }}
 	</article>
 	{{ end }}
 </main>

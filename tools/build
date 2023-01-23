@@ -54,6 +54,11 @@ generateArticle() {
 	local title=$(./tools/title "$filepath")
 	local synopsis=$(./tools/synopsis "$filepath")
 
+	local hasMore=false
+	if (( ${#synopsis} < ${#body} )); then
+		hasMore=true
+	fi
+
 	mkdir -p "$PUBLIC_DIR/$slug"
 
 	jq --null-input \
@@ -61,6 +66,7 @@ generateArticle() {
 		--arg title "$title" \
 		--arg synopsisHTML "$synopsis" \
 		--arg synopsisText "$(htmlq -t <<< "$synopsis")" \
+		--argjson synopsisHasMore "$hasMore" \
 		--argjson writtenAt "$writtenAt" \
 		--argjson updatedAt "$updatedAt" \
 		--arg bodyHTML "$body" \
@@ -72,7 +78,8 @@ generateArticle() {
 			$updatedAt,
 			synopsis: {
 				text: $synopsisText,
-				html: $synopsisHTML
+				html: $synopsisHTML,
+				hasMore: $synopsisHasMore
 			},
 			body: {
 				text: $bodyText,
@@ -113,8 +120,10 @@ main() {
 		generateIndex "$@"
 		;;
 	"")
-		rm -rf "$PUBLIC_DIR"
 		mkdir -p "$PUBLIC_DIR"
+		if [[ -d "$PUBLIC_DIR" ]]; then
+			rm -rf "$PUBLIC_DIR/"*
+		fi
 
 		articles=( "$ARTICLES_DIR"/* )
 		if [[ -f "$articles" ]]; then

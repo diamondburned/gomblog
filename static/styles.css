@@ -125,6 +125,11 @@ footer::before {
 	border-top: 1px solid #ccc8;
 }
 
+#index article > hr {
+	margin: 2em 0;
+	border-style: solid;
+}
+
 #index article > a.view-more {
 	margin: 1rem 0;
 	padding: 1rem 0;
