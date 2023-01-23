@@ -133,6 +133,7 @@ footer::before {
 #index article > a.view-more {
 	margin: 1rem 0;
 	padding: 1rem 0;
+	padding-top: 0;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
