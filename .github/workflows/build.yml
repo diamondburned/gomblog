@@ -14,6 +14,7 @@ jobs:
         with:
           auto-optimise: true
           shell-file: shell.nix
+          nix-path: nixpkgs=channel:nixos-22.11
 
       - name: Build
         run: build
