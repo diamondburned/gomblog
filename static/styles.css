@@ -1,32 +1,32 @@
 :root {
-    --blue: #55CDFC;
-    --pink: #F7A8B8;
+	--blue: #55CDFC;
+	--pink: #F7A8B8;
 	--blue-text: var(--blue);
-    --pink-text: var(--pink);
-    --bg: #201b1f;
-    --fg: #eee;
+	--pink-text: var(--pink);
+	--bg: #201b1f;
+	--fg: #eee;
 	--b2: #40363a;
-    --f2: #ccc;
-    --hl: #fff;
-    --ov: rgba(255, 255, 255, 0.15);
-    --hr: rgba(255, 255, 255, 0.60);
+	--f2: #ccc;
+	--hl: #fff;
+	--ov: rgba(255, 255, 255, 0.15);
+	--hr: rgba(255, 255, 255, 0.60);
 	--transition: 75ms linear
 }
 
 @media (prefers-color-scheme: light) {
-    :root {
-        --blue: #00b7ff;
-        --pink: #ff89a0;
+	:root {
+		--blue: #00b7ff;
+		--pink: #ff89a0;
 		--blue-text: #1da7dd;
-        --pink-text: #da2a3b;
-        --bg: #eee;
-        --fg: #272226;
+		--pink-text: #da2a3b;
+		--bg: #eee;
+		--fg: #272226;
 		--b2: #e1e1e1;
-        --f2: #505050;
-        --hl: #000;
-        --ov: rgba(0, 0, 0, 0.15);
-        --hr: rgba(0, 0, 0, 0.60);
-    }
+		--f2: #505050;
+		--hl: #000;
+		--ov: rgba(0, 0, 0, 0.15);
+		--hr: rgba(0, 0, 0, 0.60);
+	}
 }
 
 html, body {
@@ -109,10 +109,17 @@ code, kbd, pre, samp {
 	font-size: 0.95em;
 }
 
-pre {
+pre, blockquote {
 	background: var(--b2);
+}
+
+pre {
 	padding: 1em;
 	overflow-x: auto;
+}
+
+blockquote {
+	padding: 0.5em 1em;
 }
 
 p img,
