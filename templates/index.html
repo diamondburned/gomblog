@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 {{ template "components/head.html" }}
 {{ $articles := datasource "articles" }}
-
-<title>gomblog</title>
+<meta property="og:title" content="Homepage" />
+<meta property="og:site_name" content="diamond's blog" />
+<meta property="og:type" content="article" />
+<meta property="article:author" content="diamondburned" />
+<title>diamond's blog</title>
 
 {{ template "components/header.html" }}
 
@@ -13,7 +16,7 @@
 			<datetime>{{ (time.Unix .writtenAt).Format "2006/01/02" }}</datetime>
 		</aside>
 		<div class="article-body">
-			{{ .synopsis }}
+			{{ .synopsis.html }}
 		</div>
 		<a href="/{{ .slug }}" class="view-more">
 			read more

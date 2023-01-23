@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 {{ template "components/head.html" }}
 {{ $article := datasource "article" }}
-
-<title>{{ $article.title }} — gomblog</title>
+<meta property="og:title" content="{{ $article.title }}" />
+<meta property="og:site_name" content="diamond's blog" />
+<meta property="og:type" content="article" />
+<meta property="og:description" content="{{ $article.synopsis.text }}" />
+<meta property="article:author" content="diamondburned" />
+<title>{{ $article.title }} — diamond's blog</title>
 
 {{ template "components/header.html" }}
 
@@ -15,7 +19,7 @@
 			{{ end }}
 		</aside>
 		<div class="article-body">
-			{{ $article.body }}
+			{{ $article.body.html }}
 		</div>
 	<article>
 </main>

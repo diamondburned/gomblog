@@ -56,11 +56,26 @@ generateArticle() {
 	jq --null-input \
 		--arg slug "$slug" \
 		--arg title "$title" \
-		--arg synopsis "$synopsis" \
+		--arg synopsisHTML "$synopsis" \
+		--arg synopsisText "$(htmlq -t <<< "$synopsis")" \
 		--argjson writtenAt "$writtenAt" \
 		--argjson updatedAt "$updatedAt" \
-		--arg body "$body" \
-		'{ $slug, $title, $synopsis, $writtenAt, $updatedAt, $body }' > "$PUBLIC_DIR/$slug.json"
+		--arg bodyHTML "$body" \
+		--arg bodyText "$(htmlq -t <<< "$body")" \
+		'{
+			$slug,
+			$title,
+			$writtenAt,
+			$updatedAt,
+			synopsis: {
+				text: $synopsisText,
+				html: $synopsisHTML
+			},
+			body: {
+				text: $bodyText,
+				html: $bodyHTML
+			}
+		}' > "$PUBLIC_DIR/$slug.json"
 
 	gomplate "${gomplateFlags[@]}" \
 		-f "$ARTICLE_TEMPLATE" \
