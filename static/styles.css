@@ -148,6 +148,10 @@ aside {
 	color: var(--f2);
 }
 
+h1, h2, h3, h4, h5, h6 {
+	font-family: "Lato", "Source Sans Pro", "Noto Sans", "Segoe UI", sans-serif;
+}
+
 ol ol,
 ul ul,
 li li {
