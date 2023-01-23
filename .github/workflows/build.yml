@@ -16,7 +16,7 @@ jobs:
           shell-file: shell.nix
 
       - name: Build
-        run: build
+        run: build --minify
  
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v1

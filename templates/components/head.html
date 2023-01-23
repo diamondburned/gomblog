@@ -1,12 +1,17 @@
 <meta name="viewport" content="initial-scale=1" />
 <meta charset="UTF-8">
-<link rel="stylesheet" href="https://necolas.github.io/normalize.css/latest/normalize.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css@1.4.1/css/sakura.min.css">
-<link rel="stylesheet" href="/static/highlightjs-dark.css">
+{{ template "lazycss" "https://necolas.github.io/normalize.css/latest/normalize.css" }}
+{{ template "lazycss" "https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap" }}
+{{ template "lazycss" "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600;700&display=swap" }}
+{{ template "lazycss" "https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" }}
+{{ template "lazycss" "/static/highlightjs-dark.css" }}
+<link rel="stylesheet" href="/static/sakura-vader.css">
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <script type="module" async src="/static/hljs.js"></script>
 <script type="module" async src="/static/swup.js"></script>
+
+{{ define "lazycss" }}
+<link rel="stylesheet" href="{{ . }}" media="none" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ . }}"></noscript>
+{{ end }}

@@ -10,6 +10,7 @@ PUBLIC_DIR=${PUBLIC_DIR:-$ROOT/public}
 STATIC_DIR=${STATIC_DIR:-$ROOT/static}
 ARTICLES_DIR=${ARTICLES_DIR:-$ROOT/articles}
 COMPONENTS_DIR=${COMPONENTS_DIR:-$ROOT/templates/components}
+TRANSFORMS_DIR=${TRANSFORMS_DIR:-$ROOT/transforms}
 
 INDEX_TEMPLATE=${INDEX_TEMPLATE:-$ROOT/templates/index.html}
 ARTICLE_TEMPLATE=${ARTICLE_TEMPLATE:-$ROOT/templates/article.html}
@@ -109,11 +110,38 @@ generateIndex() {
 			-d "articles=stdin:///articles.json"
 }
 
+transform() {
+	for f in "${TRANSFORMS_DIR[@]}"/*; do
+		"$f" "$1"
+	done
+}
+
 main() {
+	for arg in "$@"; do
+		case "$arg" in
+		-m|--minify)
+			shift
+			export MINIFY=1;;
+		-h|--help)
+			log "Usage: $(basename "$0") [-m|--minify]"
+			return;;
+		--)
+			shift
+			break;;
+		*)
+			break;;
+		esac
+	done
+
 	case "$1" in
 	article)
 		for f in "${@:2}"; do
 			generateArticle "$f"
+		done
+		;;
+	transform)
+		for f in "${@:2}"; do
+			transform "$f"
 		done
 		;;
 	index)
@@ -127,7 +155,7 @@ main() {
 
 		articles=( "$ARTICLES_DIR"/* )
 		if [[ -f "$articles" ]]; then
-			parallel -j10 "${BASH_SOURCE[0]}" article -- "${articles[@]}"
+			parallel "$0" article -- "${articles[@]}"
 		fi
 
 		articleJSONs=( "$PUBLIC_DIR"/!(~*)/index.json )
@@ -135,10 +163,14 @@ main() {
 			generateIndex "${articleJSONs[@]}"
 		fi
 
-		ln -s "$(realpath "$STATIC_DIR")" "$PUBLIC_DIR/static"
+		cp -r "$STATIC_DIR" "$PUBLIC_DIR/static"
+
+		# transform $(find "$PUBLIC_DIR" -type f)
+		parallel "$0" transform -- $(find "$PUBLIC_DIR" -type f)
+		# parallel -j10 "${BASH_SOURCE[0]}" transform -- "$(find "$PUBLIC_DIR" -type f)"
 		;;
 	*)
-		log "Unknown item to gennerate: $1 (wants article|index)"
+		log "Unknown item to generate: $1 (wants article|index|transform)"
 		return 1;;
 	esac
 }
