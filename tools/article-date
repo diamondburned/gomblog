@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+main() {
+	init "$1"
+	echo "$writtenAt" "$updatedAt" "$slug"
+}
+
+init() {
+	filepath="$1"
+	filename="${filepath##*/}"
+	slug="${filename%.*}"
+
+	read -r writtenAt updatedAt \
+		< <(stat -c '%W %Y' "$filepath")
+
+	if [[ "$filename" =~ ^[0-9]*\+ ]]; then
+		writtenAt="${filename%%+*}"
+		return
+	fi
+
+	rev=$(git log --reverse --oneline "$filepath" \
+			| head -n1 \
+			| cut -f1 -d' ' 2> /dev/null)
+	if [[ "$rev" != "" ]]; then
+		writtenAt=$(git show -s --format="%cd" --date="format:%s" "$rev")
+		return
+	fi
+}
+
+main "$@"

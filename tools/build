@@ -32,14 +32,9 @@ generateArticle() {
 	local filepath="${1}"
 	local filename="${1##*/}"
 	local extension="${filename##*.}"
-	local slug="${filename%.*}"
 
-	local writtenAt updatedAt
-	read -r writtenAt updatedAt < <(stat -c '%W %Y' "$filepath")
-	if [[ "$filename" =~ ^[0-9]*\+ ]]; then
-		writtenAt="${filename%%+*}"
-		slug="${slug#*+}"
-	fi
+	local writtenAt updatedAt slug
+	read -r writtenAt updatedAt slug < <(article-date "$filepath")
 
 	local body
 	case "$extension" in
