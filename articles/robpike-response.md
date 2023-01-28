@@ -1,3 +1,7 @@
+This article is a reply to
+[@robpike@hachyderm.io](https://hachyderm.io/@robpike)'s
+[toot](https://hachyderm.io/@robpike/109763603394772405).
+
 I'm sorry, but this post screams "boomer take" to me. As much as I am a huge fan of Go and their creators, I don't think this take makes sense. (1/4)
 
 You're blaming college graduates for being "full-stack engineers", but the reality is that these positions didn't come from these graduates; they came from the companies that hired them. These companies decided that they needed a "full-stack" developer, and these people wanted to fulfill that role. They didn't suddenly decide to become lazy. Also, why gatekeep them from the industry just because they don't know gravitational physics? (2/4)
