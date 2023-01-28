@@ -46,6 +46,13 @@ $ nix-env --uninstall nixpkgs.firefox # or nixos.firefox
 **Note:** Nix-env is actually not the advised way to use Nix, Ideally, you’d want to use something more declarative like [Home Manager](https://github.com/nix-community/home-manager), as it will heavily aid you in maintaining your home environment while not letting you accumulate packages and forget about them.
 
 
+## Nix-store
+
+Some commands that are potentially helpful in certain niche use-cases:
+
+- To optimize the Nix store, run `nix-store --optimise`.
+- To find out why a derivation path is being kept around, use `nix-store --query --roots <path>`.
+
 ## Nix Shell
 
 The Nix shell is used to initialize a shell containing all the dependencies needed for development. Note that **it is incapable of running services**; see [nixos-shell (VM version)](https://github.com/Mic92/nixos-shell) or [nixos-shell (container version)](https://github.com/chrisfarms/nixos-shell) for that. You can also use Docker with [Arion](https://docs.hercules-ci.com/arion/), which acts like Docker Compose but with Nix.
