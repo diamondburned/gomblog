@@ -9,21 +9,31 @@ init() {
 	filename="${filepath##*/}"
 	slug="${filename%.*}"
 
-	read -r writtenAt updatedAt \
-		< <(stat -c '%W %Y' "$filepath")
-
-	if [[ "$filename" =~ ^[0-9]*\+ ]]; then
-		writtenAt="${filename%%+*}"
-		return
+	headrev=$(commit "$filepath")
+	tailrev=$(commit "$filepath" --reverse)
+	if [[ "$tailrev" != "" ]]; then
+		writtenAt=$(commit_date "$tailrev")
+	fi
+	if [[ "$headrev" != "" ]]; then
+		updatedAt=$(commit_date "$headrev")
 	fi
 
-	rev=$(git log --reverse --oneline "$filepath" \
-			| head -n1 \
-			| cut -f1 -d' ' 2> /dev/null)
-	if [[ "$rev" != "" ]]; then
-		writtenAt=$(git show -s --format="%cd" --date="format:%s" "$rev")
-		return
+	if [[ "$slug" =~ ^[0-9]*\+ ]]; then
+		writtenAt="${slug%%+*}"
+		slug="${slug#*+}"
 	fi
+
+	if ! git diff --exit-code --quiet "$filepath"; then
+		read -r updatedAt < <(stat -c '%Y' "$filepath")
+	fi
+}
+
+commit() {
+	git log --oneline "${@:2}" "$1" | head -n1 | cut -f1 -d' ' 2> /dev/null
+}
+
+commit_date() {
+	git show -s --format="%cd" --date="format:%s" "$1"
 }
 
 main "$@"
