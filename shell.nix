@@ -6,6 +6,7 @@ pkgs.mkShell {
 		gomplate
 		moreutils # for parallel
 		htmlq
+		jq
 		minify
 		(pkgs.writeShellScriptBin "serve" ''${pkgs.python3}/bin/python3 -m http.server'')
 	];
