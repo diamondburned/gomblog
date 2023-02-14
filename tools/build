@@ -6,6 +6,7 @@ SOURCE_ROOT=$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")
 cd "${SOURCE_ROOT}"
 
 ROOT=${ROOT:-$SOURCE_ROOT}
+TOOLS_DIR=${TOOLS_DIR:-$ROOT/tools}
 PUBLIC_DIR=${PUBLIC_DIR:-$ROOT/public}
 STATIC_DIR=${STATIC_DIR:-$ROOT/static}
 ARTICLES_DIR=${ARTICLES_DIR:-$ROOT/articles}
@@ -22,8 +23,8 @@ gomplateFlags=(
 	${GOMPLATE_FLAGS}
 	--template "components=$COMPONENTS_DIR"
 	--plugin "md=cmark"
-	--plugin "title=$SOURCE_ROOT/tools/title"
-	--plugin "synopsis=$SOURCE_ROOT/tools/synopsis"
+	--plugin "title=$TOOLS_DIR/title"
+	--plugin "synopsis=$TOOLS_DIR/synopsis"
 )
 
 generateArticle() {
