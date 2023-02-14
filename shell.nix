@@ -4,10 +4,10 @@ pkgs.mkShell {
 	buildInputs = with pkgs; [
 		cmark
 		gomplate
-		moreutils # for parallel
 		htmlq
 		jq
 		minify
+		(pkgs.writeShellScriptBin "parallel-moreutils" ''${pkgs.moreutils}/bin/parallel "$@"'')
 		(pkgs.writeShellScriptBin "serve" ''${pkgs.python3}/bin/python3 -m http.server'')
 	];
 
