@@ -161,7 +161,7 @@ main() {
 		cp -r "$STATIC_DIR" "$PUBLIC_DIR/static"
 
 		# transform $(find "$PUBLIC_DIR" -type f)
-		parallel "$0" transform -- $(find "$PUBLIC_DIR" -type f)
+		parallel-moreutils "$0" transform -- $(find "$PUBLIC_DIR" -type f)
 		# parallel -j10 "${BASH_SOURCE[0]}" transform -- "$(find "$PUBLIC_DIR" -type f)"
 		;;
 	*)
