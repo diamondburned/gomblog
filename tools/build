@@ -150,7 +150,7 @@ main() {
 
 		articles=( "$ARTICLES_DIR"/* )
 		if [[ -f "$articles" ]]; then
-			parallel "$0" article -- "${articles[@]}"
+			parallel-moreutils "$0" article -- "${articles[@]}"
 		fi
 
 		articleJSONs=( "$PUBLIC_DIR"/!(~*)/index.json )
@@ -162,7 +162,7 @@ main() {
 
 		# transform $(find "$PUBLIC_DIR" -type f)
 		parallel-moreutils "$0" transform -- $(find "$PUBLIC_DIR" -type f)
-		# parallel -j10 "${BASH_SOURCE[0]}" transform -- "$(find "$PUBLIC_DIR" -type f)"
+		# parallel-moreutils -j10 "${BASH_SOURCE[0]}" transform -- "$(find "$PUBLIC_DIR" -type f)"
 		;;
 	*)
 		log "Unknown item to generate: $1 (wants article|index|transform)"
