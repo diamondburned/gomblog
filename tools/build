@@ -35,7 +35,7 @@ generateArticle() {
 	local extension="${filename##*.}"
 
 	local writtenAt updatedAt slug
-	read -r writtenAt updatedAt slug < <(article-date "$filepath")
+	read -r writtenAt updatedAt slug < <("$TOOLS_DIR/article-date" "$filepath")
 
 	local body
 	case "$extension" in
@@ -48,8 +48,8 @@ generateArticle() {
 		return 1;;
 	esac
 
-	local title=$(./tools/title "$filepath")
-	local synopsis=$(./tools/synopsis "$filepath")
+	local title=$("$TOOLS_DIR/title" "$filepath")
+	local synopsis=$("$TOOLS_DIR/synopsis" "$filepath")
 
 	local hasMore=false
 	if (( ${#synopsis} < ${#body} )); then
