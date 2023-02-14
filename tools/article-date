@@ -23,8 +23,12 @@ init() {
 		slug="${slug#*+}"
 	fi
 
-	if ! git diff --exit-code --quiet "$filepath"; then
+	if [[ "$updatedAt" == "" ]] || ! git diff --exit-code --quiet "$filepath"; then
 		read -r updatedAt < <(stat -c '%Y' "$filepath")
+	fi
+
+	if [[ "$writtenAt" == "" ]]; then
+		writtenAt="$updatedAt"
 	fi
 }
 
