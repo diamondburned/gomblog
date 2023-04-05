@@ -2,8 +2,8 @@
 trimPunct() {
 	declare -n v="$1"
 	for punct in "${@:2}"; do
-		if [[ "${v%%"${punct}"*}" != "${v}" ]]; then
-			v="${v%%"${punct}"*}${punct}"
+		if [[ "${v%%"${punct} "*}" != "${v}" ]]; then
+			v="${v%%"${punct} "*}${punct}"
 		fi
 	done
 }
