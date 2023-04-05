@@ -99,11 +99,13 @@ generateIndex() {
 	done
 
 	cat "$@" \
-		| jq -sc 'sort_by(.writtenAt) | reverse' \
-		| gomplate "${gomplateFlags[@]}" \
-			-f "$INDEX_TEMPLATE" \
-			-o "$PUBLIC_DIR/index.html" \
-			-d "articles=stdin:///articles.json"
+		| jq -s 'map(del(.body)) | sort_by(.writtenAt) | reverse' \
+		> "$PUBLIC_DIR/articles.json"
+
+	gomplate "${gomplateFlags[@]}" \
+		-f "$INDEX_TEMPLATE" \
+		-o "$PUBLIC_DIR/index.html" \
+		-d "articles=file://$(realpath "$PUBLIC_DIR/articles.json")"
 }
 
 transform() {
