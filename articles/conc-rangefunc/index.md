@@ -1,7 +1,8 @@
-# `rangefunc` in `sourcegraph/conc`? I sure hope this answers your question.
+# rangefunc in sourcegraph/conc? I sure hope this answers your question.
 
-I tried adding `rangefunc` into `sourcegraph/conc`. The answer may or may not
-shock you\!\!\!
+I tried adding [`rangefunc`](https://go.dev/wiki/RangefuncExperiment) into
+[sourcegraph/conc](https://github.com/sourcegraph/conc). The answer may or may
+not shock you!!\!
 
 ## How It's Done
 
@@ -41,7 +42,7 @@ iter.ForEachSeq(iter.Slice(items), func(item *T) bool {
 })
 ```
 
-Seems really nice\! Let's see how well it fares up with the old way, though.
+Seems really nice! Let's see how well it fares up with the old way, though.
 
 ## Benchmarking
 
@@ -117,7 +118,7 @@ function and where a lot of time is spent.
 
 ![CPU pprof output](./cpuprofile.svg)
 
-It was channels all along\! Why do we need channels, anyway?
+It was channels all along! Why do we need channels, anyway?
 
 ## Iterators and Concurrency
 
