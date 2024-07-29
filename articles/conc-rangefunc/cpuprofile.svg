@@ -1,0 +1,638 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="280.7px" height="639.3px" xmlns="http://www.w3.org/2000/svg">
+  <defs/>
+  <script type="text/ecmascript">
+/**
+ *  SVGPan library 1.2.2
+ * ======================
+ *
+ * Given an unique existing element with id "viewport" (or when missing, the
+ * first g-element), including the library into any SVG adds the following
+ * capabilities:
+ *
+ *  - Mouse panning
+ *  - Mouse zooming (using the wheel)
+ *  - Object dragging
+ *
+ * You can configure the behaviour of the pan/zoom/drag with the variables
+ * listed in the CONFIGURATION section of this file.
+ *
+ * Known issues:
+ *
+ *  - Zooming (while panning) on Safari has still some issues
+ *
+ * Releases:
+ *
+ * 1.2.2, Tue Aug 30 17:21:56 CEST 2011, Andrea Leofreddi
+ *	- Fixed viewBox on root tag (#7)
+ *	- Improved zoom speed (#2)
+ *
+ * 1.2.1, Mon Jul  4 00:33:18 CEST 2011, Andrea Leofreddi
+ *	- Fixed a regression with mouse wheel (now working on Firefox 5)
+ *	- Working with viewBox attribute (#4)
+ *	- Added "use strict;" and fixed resulting warnings (#5)
+ *	- Added configuration variables, dragging is disabled by default (#3)
+ *
+ * 1.2, Sat Mar 20 08:42:50 GMT 2010, Zeng Xiaohui
+ *	Fixed a bug with browser mouse handler interaction
+ *
+ * 1.1, Wed Feb  3 17:39:33 GMT 2010, Zeng Xiaohui
+ *	Updated the zoom code to support the mouse wheel on Safari/Chrome
+ *
+ * 1.0, Andrea Leofreddi
+ *	First release
+ *
+ * This code is licensed under the following BSD license:
+ *
+ * Copyright 2009-2017 Andrea Leofreddi &lt;a.leofreddi@vleo.net&gt;. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ *    1. Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *    2. Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *    3. Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
+ *       this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY COPYRIGHT HOLDERS AND CONTRIBUTORS ''AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Andrea Leofreddi.
+ */
+
+"use strict";
+
+/// CONFIGURATION
+/// ====&gt;
+
+var enablePan = 1; // 1 or 0: enable or disable panning (default enabled)
+var enableZoom = 1; // 1 or 0: enable or disable zooming (default enabled)
+var enableDrag = 0; // 1 or 0: enable or disable dragging (default disabled)
+var zoomScale = 0.2; // Zoom sensitivity
+
+/// &lt;====
+/// END OF CONFIGURATION
+
+var root = document.documentElement;
+
+var state = 'none', svgRoot = null, stateTarget, stateOrigin, stateTf;
+
+setupHandlers(root);
+
+/**
+ * Register handlers
+ */
+function setupHandlers(root){
+	setAttributes(root, {
+		"onmouseup" : "handleMouseUp(evt)",
+		"onmousedown" : "handleMouseDown(evt)",
+		"onmousemove" : "handleMouseMove(evt)",
+		//"onmouseout" : "handleMouseUp(evt)", // Decomment this to stop the pan functionality when dragging out of the SVG element
+	});
+
+	if(navigator.userAgent.toLowerCase().indexOf('webkit') &gt;= 0)
+		window.addEventListener('mousewheel', handleMouseWheel, false); // Chrome/Safari
+	else
+		window.addEventListener('DOMMouseScroll', handleMouseWheel, false); // Others
+}
+
+/**
+ * Retrieves the root element for SVG manipulation. The element is then cached into the svgRoot global variable.
+ */
+function getRoot(root) {
+	if(svgRoot == null) {
+		var r = root.getElementById("viewport") ? root.getElementById("viewport") : root.documentElement, t = r;
+
+		while(t != root) {
+			if(t.getAttribute("viewBox")) {
+				setCTM(r, t.getCTM());
+
+				t.removeAttribute("viewBox");
+			}
+
+			t = t.parentNode;
+		}
+
+		svgRoot = r;
+	}
+
+	return svgRoot;
+}
+
+/**
+ * Instance an SVGPoint object with given event coordinates.
+ */
+function getEventPoint(evt) {
+	var p = root.createSVGPoint();
+
+	p.x = evt.clientX;
+	p.y = evt.clientY;
+
+	return p;
+}
+
+/**
+ * Sets the current transform matrix of an element.
+ */
+function setCTM(element, matrix) {
+	var s = "matrix(" + matrix.a + "," + matrix.b + "," + matrix.c + "," + matrix.d + "," + matrix.e + "," + matrix.f + ")";
+
+	element.setAttribute("transform", s);
+}
+
+/**
+ * Dumps a matrix to a string (useful for debug).
+ */
+function dumpMatrix(matrix) {
+	var s = "[ " + matrix.a + ", " + matrix.c + ", " + matrix.e + "\n  " + matrix.b + ", " + matrix.d + ", " + matrix.f + "\n  0, 0, 1 ]";
+
+	return s;
+}
+
+/**
+ * Sets attributes of an element.
+ */
+function setAttributes(element, attributes){
+	for (var i in attributes)
+		element.setAttributeNS(null, i, attributes[i]);
+}
+
+/**
+ * Handle mouse wheel event.
+ */
+function handleMouseWheel(evt) {
+	if(!enableZoom)
+		return;
+
+	if(evt.preventDefault)
+		evt.preventDefault();
+
+	evt.returnValue = false;
+
+	var svgDoc = evt.target.ownerDocument;
+
+	var delta;
+
+	if(evt.wheelDelta)
+		delta = evt.wheelDelta / 360; // Chrome/Safari
+	else
+		delta = evt.detail / -9; // Mozilla
+
+	var z = Math.pow(1 + zoomScale, delta);
+
+	var g = getRoot(svgDoc);
+	
+	var p = getEventPoint(evt);
+
+	p = p.matrixTransform(g.getCTM().inverse());
+
+	// Compute new scale matrix in current mouse position
+	var k = root.createSVGMatrix().translate(p.x, p.y).scale(z).translate(-p.x, -p.y);
+
+        setCTM(g, g.getCTM().multiply(k));
+
+	if(typeof(stateTf) == "undefined")
+		stateTf = g.getCTM().inverse();
+
+	stateTf = stateTf.multiply(k.inverse());
+}
+
+/**
+ * Handle mouse move event.
+ */
+function handleMouseMove(evt) {
+	if(evt.preventDefault)
+		evt.preventDefault();
+
+	evt.returnValue = false;
+
+	var svgDoc = evt.target.ownerDocument;
+
+	var g = getRoot(svgDoc);
+
+	if(state == 'pan' &amp;&amp; enablePan) {
+		// Pan mode
+		var p = getEventPoint(evt).matrixTransform(stateTf);
+
+		setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
+	} else if(state == 'drag' &amp;&amp; enableDrag) {
+		// Drag mode
+		var p = getEventPoint(evt).matrixTransform(g.getCTM().inverse());
+
+		setCTM(stateTarget, root.createSVGMatrix().translate(p.x - stateOrigin.x, p.y - stateOrigin.y).multiply(g.getCTM().inverse()).multiply(stateTarget.getCTM()));
+
+		stateOrigin = p;
+	}
+}
+
+/**
+ * Handle click event.
+ */
+function handleMouseDown(evt) {
+	if(evt.preventDefault)
+		evt.preventDefault();
+
+	evt.returnValue = false;
+
+	var svgDoc = evt.target.ownerDocument;
+
+	var g = getRoot(svgDoc);
+
+	if(
+		evt.target.tagName == "svg"
+		|| !enableDrag // Pan anyway when drag is disabled and the user clicked on an element
+	) {
+		// Pan mode
+		state = 'pan';
+
+		stateTf = g.getCTM().inverse();
+
+		stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
+	} else {
+		// Drag mode
+		state = 'drag';
+
+		stateTarget = evt.target;
+
+		stateTf = g.getCTM().inverse();
+
+		stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
+	}
+}
+
+/**
+ * Handle mouse button release event.
+ */
+function handleMouseUp(evt) {
+	if(evt.preventDefault)
+		evt.preventDefault();
+
+	evt.returnValue = false;
+
+	var svgDoc = evt.target.ownerDocument;
+
+	if(state == 'pan' || state == 'drag') {
+		// Quit pan mode
+		state = '';
+	}
+}
+</script>
+  <rect width="280.706" height="639.317" style="fill: rgb(255, 255, 255);"/>
+  <g id="node4" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N4</title>
+    <g id="a_node4">
+      <a title="runtime.chanrecv (2.73s)">
+        <polygon stroke="#b24200" points="921.38,-1642.75 736.62,-1642.75 736.62,-1544.75 921.38,-1544.75 921.38,-1642.75" fill="#edded5"/>
+        <text style="white-space: pre;" x="829" y="-1620.7" text-anchor="middle" font-size="19.00" font-family="Times,serif">runtime</text>
+        <text style="white-space: pre;" x="829" y="-1598.2" text-anchor="middle" font-size="19.00" font-family="Times,serif">chanrecv</text>
+        <text style="white-space: pre;" x="829" y="-1575.7" text-anchor="middle" font-size="19.00" font-family="Times,serif">0.63s (4.91%)</text>
+        <text style="white-space: pre;" x="829" y="-1553.2" text-anchor="middle" font-size="19.00" font-family="Times,serif">of 2.73s (21.28%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node6" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N6</title>
+    <g id="a_node6">
+      <a title="github.com/sourcegraph/conc.(*WaitGroup).Go.func1 (3.35s)">
+        <polygon stroke="#b23b00" points="889.88,-2420.62 768.12,-2420.62 768.12,-2327.12 889.88,-2327.12 889.88,-2420.62" fill="#edddd5"/>
+        <text style="white-space: pre;" x="829" y="-2405.22" text-anchor="middle" font-size="12.00" font-family="Times,serif">conc</text>
+        <text style="white-space: pre;" x="829" y="-2390.97" text-anchor="middle" font-size="12.00" font-family="Times,serif">(*WaitGroup)</text>
+        <text style="white-space: pre;" x="829" y="-2376.72" text-anchor="middle" font-size="12.00" font-family="Times,serif">Go</text>
+        <text style="white-space: pre;" x="829" y="-2362.47" text-anchor="middle" font-size="12.00" font-family="Times,serif">func1</text>
+        <text style="white-space: pre;" x="829" y="-2348.22" text-anchor="middle" font-size="12.00" font-family="Times,serif">0.07s (0.55%)</text>
+        <text style="white-space: pre;" x="829" y="-2333.97" text-anchor="middle" font-size="12.00" font-family="Times,serif">of 3.35s (26.11%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node48" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N48</title>
+    <g id="a_node48">
+      <a title="github.com/sourcegraph/conc/panics.(*Catcher).Try (3.11s)">
+        <polygon stroke="#b23d00" points="886.12,-2220.25 771.88,-2220.25 771.88,-2144.75 886.12,-2144.75 886.12,-2220.25" fill="#edddd5"/>
+        <text style="white-space: pre;" x="829" y="-2205.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">panics</text>
+        <text style="white-space: pre;" x="829" y="-2192.3" text-anchor="middle" font-size="11.00" font-family="Times,serif">(*Catcher)</text>
+        <text style="white-space: pre;" x="829" y="-2178.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">Try</text>
+        <text style="white-space: pre;" x="829" y="-2165.3" text-anchor="middle" font-size="11.00" font-family="Times,serif">0.04s (0.31%)</text>
+        <text style="white-space: pre;" x="829" y="-2151.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">of 3.11s (24.24%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge1" class="edge" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N6-&gt;N48</title>
+    <g id="a_edge1">
+      <a title="github.com/sourcegraph/conc.(*WaitGroup).Go.func1 -&gt; github.com/sourcegraph/conc/panics.(*Catcher).Try (3.11s)">
+        <path stroke="#b23d00" stroke-width="2" d="M829,-2327.03C829,-2298.74 829,-2262.45 829,-2233.43" fill="none"/>
+        <polygon stroke="#b23d00" stroke-width="2" points="832.5,-2233.69 829,-2223.69 825.5,-2233.69 832.5,-2233.69" fill="#b23d00"/>
+      </a>
+    </g>
+    <g id="a_edge1-label">
+      <a title="github.com/sourcegraph/conc.(*WaitGroup).Go.func1 -&gt; github.com/sourcegraph/conc/panics.(*Catcher).Try (3.11s)">
+        <text style="white-space: pre;" x="850.75" y="-2274.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 3.11s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node58" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N58</title>
+    <g id="a_node58">
+      <a title="sync.(*WaitGroup).Add (0.18s)">
+        <polygon stroke="#b2afa5" points="753.75,-2220.25 646.25,-2220.25 646.25,-2144.75 753.75,-2144.75 753.75,-2220.25" fill="#edeceb"/>
+        <text style="white-space: pre;" x="700" y="-2205.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">sync</text>
+        <text style="white-space: pre;" x="700" y="-2192.3" text-anchor="middle" font-size="11.00" font-family="Times,serif">(*WaitGroup)</text>
+        <text style="white-space: pre;" x="700" y="-2178.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">Add</text>
+        <text style="white-space: pre;" x="700" y="-2165.3" text-anchor="middle" font-size="11.00" font-family="Times,serif">0.04s (0.31%)</text>
+        <text style="white-space: pre;" x="700" y="-2151.8" text-anchor="middle" font-size="11.00" font-family="Times,serif">of 0.18s (1.40%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge61" class="edge" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N6-&gt;N58</title>
+    <g id="a_edge61">
+      <a title="github.com/sourcegraph/conc.(*WaitGroup).Go.func1 ... sync.(*WaitGroup).Add (0.17s)">
+        <path stroke="#b2afa6" stroke-dasharray="1,5" d="M797.77,-2327.03C777.72,-2297.6 751.76,-2259.49 731.63,-2229.94" fill="none"/>
+        <polygon stroke="#b2afa6" points="734.69,-2228.21 726.17,-2221.92 728.91,-2232.15 734.69,-2228.21" fill="#b2afa6"/>
+      </a>
+    </g>
+    <g id="a_edge61-label">
+      <a title="github.com/sourcegraph/conc.(*WaitGroup).Go.func1 ... sync.(*WaitGroup).Add (0.17s)">
+        <text style="white-space: pre;" x="790.75" y="-2274.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 0.17s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node8" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N8</title>
+    <g id="a_node8">
+      <a title="runtime.chansend (2.27s)">
+        <polygon stroke="#b25414" points="1521,-1632.25 1379,-1632.25 1379,-1555.25 1521,-1555.25 1521,-1632.25" fill="#ede0d8"/>
+        <text style="white-space: pre;" x="1450" y="-1614.95" text-anchor="middle" font-size="14.00" font-family="Times,serif">runtime</text>
+        <text style="white-space: pre;" x="1450" y="-1597.7" text-anchor="middle" font-size="14.00" font-family="Times,serif">chansend</text>
+        <text style="white-space: pre;" x="1450" y="-1580.45" text-anchor="middle" font-size="14.00" font-family="Times,serif">0.20s (1.56%)</text>
+        <text style="white-space: pre;" x="1450" y="-1563.2" text-anchor="middle" font-size="14.00" font-family="Times,serif">of 2.27s (17.69%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node9" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N9</title>
+    <g id="a_node9">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1 (2.87s)">
+        <polygon stroke="#b24000" points="1501.12,-2793.75 1398.88,-2793.75 1398.88,-2658.25 1501.12,-2658.25 1501.12,-2793.75" fill="#edded5"/>
+        <text style="white-space: pre;" x="1450" y="-2780.25" text-anchor="middle" font-size="10.00" font-family="Times,serif">iter</text>
+        <text style="white-space: pre;" x="1450" y="-2767.5" text-anchor="middle" font-size="10.00" font-family="Times,serif">SeqIterator2[go</text>
+        <text style="white-space: pre;" x="1450" y="-2754.75" text-anchor="middle" font-size="10.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-2742" text-anchor="middle" font-size="10.00" font-family="Times,serif">*uint8,go</text>
+        <text style="white-space: pre;" x="1450" y="-2729.25" text-anchor="middle" font-size="10.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-2716.5" text-anchor="middle" font-size="10.00" font-family="Times,serif">struct {}]</text>
+        <text style="white-space: pre;" x="1450" y="-2703.75" text-anchor="middle" font-size="10.00" font-family="Times,serif">ForEach</text>
+        <text style="white-space: pre;" x="1450" y="-2691" text-anchor="middle" font-size="10.00" font-family="Times,serif">func1</text>
+        <text style="white-space: pre;" x="1450" y="-2678.25" text-anchor="middle" font-size="10.00" font-family="Times,serif">0.01s (0.078%)</text>
+        <text style="white-space: pre;" x="1450" y="-2665.5" text-anchor="middle" font-size="10.00" font-family="Times,serif">of 2.87s (22.37%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node47" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N47</title>
+    <g id="a_node47">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1 (2.77s)">
+        <polygon stroke="#b24100" points="1497,-2571.5 1403,-2571.5 1403,-2495.25 1497,-2495.25 1497,-2571.5" fill="#edded5"/>
+        <text style="white-space: pre;" x="1450" y="-2559.9" text-anchor="middle" font-size="8.00" font-family="Times,serif">iter</text>
+        <text style="white-space: pre;" x="1450" y="-2550.15" text-anchor="middle" font-size="8.00" font-family="Times,serif">SeqIterator[go</text>
+        <text style="white-space: pre;" x="1450" y="-2540.4" text-anchor="middle" font-size="8.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-2530.65" text-anchor="middle" font-size="8.00" font-family="Times,serif">*uint8]</text>
+        <text style="white-space: pre;" x="1450" y="-2520.9" text-anchor="middle" font-size="8.00" font-family="Times,serif">ForEach</text>
+        <text style="white-space: pre;" x="1450" y="-2511.15" text-anchor="middle" font-size="8.00" font-family="Times,serif">func1</text>
+        <text style="white-space: pre;" x="1450" y="-2501.4" text-anchor="middle" font-size="8.00" font-family="Times,serif">0 of 2.77s (21.59%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge5" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N9-&gt;N47</title>
+    <g id="a_edge5">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1 -&gt; github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1 (2.77s)">
+        <path stroke="#b24100" stroke-width="2" d="M1450,-2657.79C1450,-2633.8 1450,-2607.2 1450,-2584.86" fill="none"/>
+        <polygon stroke="#b24100" stroke-width="2" points="1453.5,-2584.93 1450,-2574.93 1446.5,-2584.93 1453.5,-2584.93" fill="#b24100"/>
+      </a>
+    </g>
+    <g id="a_edge5-label">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1 -&gt; github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1 (2.77s)">
+        <text style="white-space: pre;" x="1471.75" y="-2593.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.77s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node29" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N29</title>
+    <g id="a_node29">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func2 (3.04s)">
+        <polygon stroke="#b23e00" points="900,-2059.25 758,-2059.25 758,-1878.75 900,-1878.75 900,-2059.25" fill="#edddd5"/>
+        <text style="white-space: pre;" x="829" y="-2041.95" text-anchor="middle" font-size="14.00" font-family="Times,serif">iter</text>
+        <text style="white-space: pre;" x="829" y="-2024.7" text-anchor="middle" font-size="14.00" font-family="Times,serif">SeqIterator2[go</text>
+        <text style="white-space: pre;" x="829" y="-2007.45" text-anchor="middle" font-size="14.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="829" y="-1990.2" text-anchor="middle" font-size="14.00" font-family="Times,serif">*uint8,go</text>
+        <text style="white-space: pre;" x="829" y="-1972.95" text-anchor="middle" font-size="14.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="829" y="-1955.7" text-anchor="middle" font-size="14.00" font-family="Times,serif">struct {}]</text>
+        <text style="white-space: pre;" x="829" y="-1938.45" text-anchor="middle" font-size="14.00" font-family="Times,serif">ForEach</text>
+        <text style="white-space: pre;" x="829" y="-1921.2" text-anchor="middle" font-size="14.00" font-family="Times,serif">func2</text>
+        <text style="white-space: pre;" x="829" y="-1903.95" text-anchor="middle" font-size="14.00" font-family="Times,serif">0.16s (1.25%)</text>
+        <text style="white-space: pre;" x="829" y="-1886.7" text-anchor="middle" font-size="14.00" font-family="Times,serif">of 3.04s (23.69%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node35" class="node" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N35</title>
+    <g id="a_node35">
+      <a title="runtime.chanrecv2 (2.84s)">
+        <polygon stroke="#b24000" points="895.5,-1797.75 762.5,-1797.75 762.5,-1723.75 895.5,-1723.75 895.5,-1797.75" fill="#edded5"/>
+        <text style="white-space: pre;" x="829" y="-1781.4" text-anchor="middle" font-size="13.00" font-family="Times,serif">runtime</text>
+        <text style="white-space: pre;" x="829" y="-1764.9" text-anchor="middle" font-size="13.00" font-family="Times,serif">chanrecv2</text>
+        <text style="white-space: pre;" x="829" y="-1748.4" text-anchor="middle" font-size="13.00" font-family="Times,serif">0.11s (0.86%)</text>
+        <text style="white-space: pre;" x="829" y="-1731.9" text-anchor="middle" font-size="13.00" font-family="Times,serif">of 2.84s (22.14%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge3" class="edge" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N29-&gt;N35</title>
+    <g id="a_edge3">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func2 -&gt; runtime.chanrecv2 (2.84s)">
+        <path stroke="#b24000" stroke-width="2" d="M829,-1878.44C829,-1855.36 829,-1831.36 829,-1811.17" fill="none"/>
+        <polygon stroke="#b24000" stroke-width="2" points="832.5,-1811.21 829,-1801.21 825.5,-1811.21 832.5,-1811.21" fill="#b24000"/>
+      </a>
+    </g>
+    <g id="a_edge3-label">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func2 -&gt; runtime.chanrecv2 (2.84s)">
+        <text style="white-space: pre;" x="850.75" y="-1847.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.84s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node32" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N32</title>
+    <g id="a_node32">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1-range1 (2.53s)">
+        <polygon stroke="#b24602" points="1516.5,-2055.5 1383.5,-2055.5 1383.5,-1882.5 1516.5,-1882.5 1516.5,-2055.5" fill="#edded5"/>
+        <text style="white-space: pre;" x="1450" y="-2039.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">iter</text>
+        <text style="white-space: pre;" x="1450" y="-2022.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">SeqIterator2[go</text>
+        <text style="white-space: pre;" x="1450" y="-2006.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-1989.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">*uint8,go</text>
+        <text style="white-space: pre;" x="1450" y="-1973.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-1956.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">struct {}]</text>
+        <text style="white-space: pre;" x="1450" y="-1940.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">ForEach</text>
+        <text style="white-space: pre;" x="1450" y="-1923.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">func1-range1</text>
+        <text style="white-space: pre;" x="1450" y="-1907.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">0.15s (1.17%)</text>
+        <text style="white-space: pre;" x="1450" y="-1890.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">of 2.53s (19.72%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="node36" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N36</title>
+    <g id="a_node36">
+      <a title="runtime.chansend1 (2.38s)">
+        <polygon stroke="#b24e0c" points="1516.5,-1797.75 1383.5,-1797.75 1383.5,-1723.75 1516.5,-1723.75 1516.5,-1797.75" fill="#eddfd7"/>
+        <text style="white-space: pre;" x="1450" y="-1781.4" text-anchor="middle" font-size="13.00" font-family="Times,serif">runtime</text>
+        <text style="white-space: pre;" x="1450" y="-1764.9" text-anchor="middle" font-size="13.00" font-family="Times,serif">chansend1</text>
+        <text style="white-space: pre;" x="1450" y="-1748.4" text-anchor="middle" font-size="13.00" font-family="Times,serif">0.11s (0.86%)</text>
+        <text style="white-space: pre;" x="1450" y="-1731.9" text-anchor="middle" font-size="13.00" font-family="Times,serif">of 2.38s (18.55%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge10" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N32-&gt;N36</title>
+    <g id="a_edge10">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1-range1 -&gt; runtime.chansend1 (2.38s)">
+        <path stroke="#b24e0c" d="M1450,-1882.02C1450,-1857.22 1450,-1831.05 1450,-1809.48" fill="none"/>
+        <polygon stroke="#b24e0c" points="1453.5,-1809.52 1450,-1799.52 1446.5,-1809.52 1453.5,-1809.52" fill="#b24e0c"/>
+      </a>
+    </g>
+    <g id="a_edge10-label">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1-range1 -&gt; runtime.chansend1 (2.38s)">
+        <text style="white-space: pre;" x="1471.75" y="-1847.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.38s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node34" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N34</title>
+    <g id="a_node34">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1-range1 (2.65s)">
+        <polygon stroke="#b24300" points="1516.5,-2252.5 1383.5,-2252.5 1383.5,-2112.5 1516.5,-2112.5 1516.5,-2252.5" fill="#edded5"/>
+        <text style="white-space: pre;" x="1450" y="-2236.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">iter</text>
+        <text style="white-space: pre;" x="1450" y="-2219.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">SeqIterator[go</text>
+        <text style="white-space: pre;" x="1450" y="-2203.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-2186.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">*uint8]</text>
+        <text style="white-space: pre;" x="1450" y="-2170.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">ForEach</text>
+        <text style="white-space: pre;" x="1450" y="-2153.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">func1-range1</text>
+        <text style="white-space: pre;" x="1450" y="-2137.15" text-anchor="middle" font-size="13.00" font-family="Times,serif">0.12s (0.94%)</text>
+        <text style="white-space: pre;" x="1450" y="-2120.65" text-anchor="middle" font-size="13.00" font-family="Times,serif">of 2.65s (20.65%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge9" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N34-&gt;N32</title>
+    <g id="a_edge9">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1-range1 -&gt; github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1-range1 (2.53s)">
+        <path stroke="#b24602" d="M1450,-2112.25C1450,-2097.71 1450,-2082.11 1450,-2066.78" fill="none"/>
+        <polygon stroke="#b24602" points="1453.5,-2067.19 1450,-2057.19 1446.5,-2067.19 1453.5,-2067.19" fill="#b24602"/>
+      </a>
+    </g>
+    <g id="a_edge9-label">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1-range1 -&gt; github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func1-range1 (2.53s)">
+        <text style="white-space: pre;" x="1471.75" y="-2081.2" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.53s</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge6" class="edge" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N35-&gt;N4</title>
+    <g id="a_edge6">
+      <a title="runtime.chanrecv2 -&gt; runtime.chanrecv (2.73s)">
+        <path stroke="#b24200" stroke-width="2" d="M829,-1723.54C829,-1703.7 829,-1678.58 829,-1655.81" fill="none"/>
+        <polygon stroke="#b24200" stroke-width="2" points="832.5,-1656.11 829,-1646.11 825.5,-1656.11 832.5,-1656.11" fill="#b24200"/>
+      </a>
+    </g>
+    <g id="a_edge6-label">
+      <a title="runtime.chanrecv2 -&gt; runtime.chanrecv (2.73s)">
+        <text style="white-space: pre;" x="850.75" y="-1664.7" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.73s</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge13" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N36-&gt;N8</title>
+    <g id="a_edge13">
+      <a title="runtime.chansend1 -&gt; runtime.chansend (2.27s)">
+        <path stroke="#b25414" d="M1450,-1723.54C1450,-1700.18 1450,-1669.49 1450,-1643.93" fill="none"/>
+        <polygon stroke="#b25414" points="1453.5,-1644.11 1450,-1634.11 1446.5,-1644.11 1453.5,-1644.11" fill="#b25414"/>
+      </a>
+    </g>
+    <g id="a_edge13-label">
+      <a title="runtime.chansend1 -&gt; runtime.chansend (2.27s)">
+        <text style="white-space: pre;" x="1471.75" y="-1664.7" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.27s</text>
+      </a>
+    </g>
+  </g>
+  <g id="node41" class="node" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N41</title>
+    <g id="a_node41">
+      <a title="github.com/sourcegraph/conc/iter_test.BenchmarkForEachSeq.func1.Slice[go.shape.int].2 (2.72s)">
+        <polygon stroke="#b24200" points="1530,-2442 1370,-2442 1370,-2305.75 1530,-2305.75 1530,-2442" fill="#edded5"/>
+        <text style="white-space: pre;" x="1450" y="-2426.6" text-anchor="middle" font-size="12.00" font-family="Times,serif">iter_test</text>
+        <text style="white-space: pre;" x="1450" y="-2412.35" text-anchor="middle" font-size="12.00" font-family="Times,serif">BenchmarkForEachSeq</text>
+        <text style="white-space: pre;" x="1450" y="-2398.1" text-anchor="middle" font-size="12.00" font-family="Times,serif">func1</text>
+        <text style="white-space: pre;" x="1450" y="-2383.85" text-anchor="middle" font-size="12.00" font-family="Times,serif">Slice[go</text>
+        <text style="white-space: pre;" x="1450" y="-2369.6" text-anchor="middle" font-size="12.00" font-family="Times,serif">shape</text>
+        <text style="white-space: pre;" x="1450" y="-2355.35" text-anchor="middle" font-size="12.00" font-family="Times,serif">int]</text>
+        <text style="white-space: pre;" x="1450" y="-2341.1" text-anchor="middle" font-size="12.00" font-family="Times,serif">2</text>
+        <text style="white-space: pre;" x="1450" y="-2326.85" text-anchor="middle" font-size="12.00" font-family="Times,serif">0.07s (0.55%)</text>
+        <text style="white-space: pre;" x="1450" y="-2312.6" text-anchor="middle" font-size="12.00" font-family="Times,serif">of 2.72s (21.20%)</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge8" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N41-&gt;N34</title>
+    <g id="a_edge8">
+      <a title="github.com/sourcegraph/conc/iter_test.BenchmarkForEachSeq.func1.Slice[go.shape.int].2 -&gt; github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1-range1 (2.65s)">
+        <path stroke="#b24300" stroke-width="2" d="M1450,-2305.31C1450,-2292.56 1450,-2279.1 1450,-2265.96" fill="none"/>
+        <polygon stroke="#b24300" stroke-width="2" points="1453.5,-2265.98 1450,-2255.98 1446.5,-2265.98 1453.5,-2265.98" fill="#b24300"/>
+      </a>
+    </g>
+    <g id="a_edge8-label">
+      <a title="github.com/sourcegraph/conc/iter_test.BenchmarkForEachSeq.func1.Slice[go.shape.int].2 -&gt; github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1-range1 (2.65s)">
+        <text style="white-space: pre;" x="1471.75" y="-2274.45" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.65s</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge7" class="edge" transform="matrix(0.5, 0, 0, 0.5, -495.26474, 1406.042725)">
+    <title>N47-&gt;N41</title>
+    <g id="a_edge7">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1 -&gt; github.com/sourcegraph/conc/iter_test.BenchmarkForEachSeq.func1.Slice[go.shape.int].2 (2.72s)">
+        <path stroke="#b24200" stroke-width="2" d="M1450,-2495.05C1450,-2483 1450,-2469.14 1450,-2455.22" fill="none"/>
+        <polygon stroke="#b24200" stroke-width="2" points="1453.5,-2455.49 1450,-2445.49 1446.5,-2455.49 1453.5,-2455.49" fill="#b24200"/>
+      </a>
+    </g>
+    <g id="a_edge7-label">
+      <a title="github.com/sourcegraph/conc/iter.SeqIterator[go.shape.*uint8].ForEach.func1 -&gt; github.com/sourcegraph/conc/iter_test.BenchmarkForEachSeq.func1.Slice[go.shape.int].2 (2.72s)">
+        <text style="white-space: pre;" x="1471.75" y="-2463.95" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 2.72s</text>
+      </a>
+    </g>
+  </g>
+  <g id="edge2" class="edge" transform="matrix(0.5, 0, 0, 0.5, -312.96991, 1219.254517)">
+    <title>N48-&gt;N29</title>
+    <g id="a_edge2">
+      <a title="github.com/sourcegraph/conc/panics.(*Catcher).Try -&gt; github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func2 (3.04s)">
+        <path stroke="#b23e00" stroke-width="2" d="M829,-2144.66C829,-2124.42 829,-2098.21 829,-2072.29" fill="none"/>
+        <polygon stroke="#b23e00" stroke-width="2" points="832.5,-2072.64 829,-2062.64 825.5,-2072.64 832.5,-2072.64" fill="#b23e00"/>
+      </a>
+    </g>
+    <g id="a_edge2-label">
+      <a title="github.com/sourcegraph/conc/panics.(*Catcher).Try -&gt; github.com/sourcegraph/conc/iter.SeqIterator2[go.shape.*uint8,go.shape.struct {}].ForEach.func2 (3.04s)">
+        <text style="white-space: pre;" x="850.75" y="-2081.2" text-anchor="middle" font-size="14.00" font-family="Times,serif"> 3.04s</text>
+      </a>
+    </g>
+  </g>
+</svg>
