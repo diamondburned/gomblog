@@ -7,6 +7,10 @@ main() {
 init() {
 	filepath="$1"
 	filename="${filepath##*/}"
+	if [[ "$filename" == index.md ]]; then
+		filename=$(dirname "$filepath")
+		filename="${filename##*/}"
+	fi
 	slug="${filename%.*}"
 
 	headrev=$(commit "$filepath")

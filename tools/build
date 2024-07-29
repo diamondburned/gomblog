@@ -30,8 +30,21 @@ gomplateFlags=(
 generateArticle() {
 	usage $# generateArticle input
 
-	local filepath="${1}"
-	local filename="${1##*/}"
+	local input="$1"
+	local isDir
+
+	if [[ -d "$input" ]]; then
+		input="$input/index.md"
+		isDir=1
+	fi
+
+	if [[ ! -f "$input" ]]; then
+		log "generateArticle: $input not found"
+		return 1
+	fi
+
+	local filepath="${input}"
+	local filename="${input##*/}"
 	local extension="${filename##*.}"
 
 	local writtenAt updatedAt slug
@@ -40,12 +53,15 @@ generateArticle() {
 	local body
 	case "$extension" in
 	md)
-		body=$(cmark ${CMARK_FLAGS} --nobreaks --unsafe --smart "$filepath");;
+		body=$(cmark ${CMARK_FLAGS} --nobreaks --unsafe --smart "$filepath")
+		;;
 	htm|html)
-		body=$(< "$filepath");;
+		body=$(< "$filepath")
+		;;
 	*)
 		log "Unknown file extension: $extension"
-		return 1;;
+		return 1
+		;;
 	esac
 
 	local title=$("$TOOLS_DIR/title" "$filepath")
@@ -57,6 +73,12 @@ generateArticle() {
 	fi
 
 	mkdir -p "$PUBLIC_DIR/$slug"
+
+	if [[ "$isDir" ]]; then
+		# Ensure assets are moved.
+		cp -r "$(dirname "$filepath")/." "$PUBLIC_DIR/$slug/"
+		rm -f "$PUBLIC_DIR/$slug/index.md"
+	fi
 
 	jq --null-input \
 		--arg slug "$slug" \
