@@ -1,8 +1,10 @@
 name: Build
+
 on:
   pull_request:
   workflow_call:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,14 +13,13 @@ jobs:
         with:
           fetch-depth: 0 # need all commits for file history
 
-      - name: Install Nix packages
-        uses: diamondburned/cache-install@0746911c01dc84bba95d35be82db09435537d8ca
-        with:
-          auto-optimise: true
-          shell-file: shell.nix
+      - name: Install Nix
+        uses: samueldr/lix-gha-installer-action
 
       - name: Build
-        run: build --minify
+        run: |
+          just build --minify
+        shell: nix develop -c bash -e {0}
  
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v1
