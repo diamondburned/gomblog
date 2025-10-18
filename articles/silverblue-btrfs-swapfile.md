@@ -35,10 +35,32 @@ composefs on / type overlay (ro,relatime,seclabel,lowerdir+=/run/ostree/.private
 
 figuring out how to modify `/` is a no-go therefore, and will probably give you a headache.
 
-to do this, do:
+we're gonna be careful because Silverblue is basically stone-age NixOS and is very fragile, so we'll take things very slowly.
+
+first, check what subvolumes you already have. be sure to memorize this layout and later check that you haven't destroyed anything:
 
 ```sh
-sudo btrfs subvolume create /var/swap
+sudo btrfs subvolume list /root
+```
+
+we're gonna do something a bit weird here. we'll mount our root btrfs partition *a second time* under /mnt. this is because our current root mount is incredibly messy, and `btrfs subvolume create` will behave weirdly. to do this, do:
+
+```sh
+sudo mount /dev/disk/by-uuid/3d312850-544d-4a06-a493-5a03028ed061 \
+  -t btrfs \
+  -o subvol=root \
+  /mnt
+```
+
+you can get the `/dev/mapper` part from `lsblk`, `fdisk -l` or GNOME disks which is what i used. you're looking for the path to the btrfs partition.
+
+also important to make sure that the `subvol` value matches with what you saw in `subvolume list` earlier.
+
+now that `/mnt` is mounted, you may finally create the swap subvolume here:
+
+```sh
+sudo btrfs subvolume create /mnt/swap
+sudo btrfs subvolume list /root # validate that a `path swap` is present
 ```
 
 then create the swapfile as usual, but in this subvolume:
